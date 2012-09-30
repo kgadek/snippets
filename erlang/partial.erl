@@ -1,6 +1,11 @@
 -module(partial).
 
--export([curry/2, curry/3, uncurry/2, uncurry/3, papply/3, papply/4, papply_C/2]).
+-export([curry/2, curry/3,
+	uncurry/2, uncurry/3,
+	papply/3, papply/4,
+	papply_C/2]).
+
+% Inspired by @JanHenryNystrom ( https://t.co/kXiUWfxH ).
 
 curry_aux(F,0,Xs) -> F(lists:reverse(Xs));
 curry_aux(F,N,Xs) -> fun(X) -> curry_aux(F,N-1,[X|Xs]) end.
