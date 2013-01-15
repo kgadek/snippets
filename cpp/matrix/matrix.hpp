@@ -26,7 +26,7 @@ public:
   /**
    * Konstruktor kopiujący. Tworzy kopię GslMatrix.
    */
-  explicit GslMatrix(const GslMatrix &other) : _GM(gsl_matrix_alloc(other._GM->size1, other._GM->size2)) {
+  GslMatrix(const GslMatrix &other) : _GM(gsl_matrix_alloc(other._GM->size1, other._GM->size2)) {
     gsl_matrix_set_all(_GM, 0.0);
   }
   /**
@@ -76,7 +76,7 @@ public:
    *
    * @warning Pamięć zaalokowaną pod zwrócony gsl_matrix* trzeba ręcznie zwolnić.
    */
-  operator gsl_matrix * () {
+  operator gsl_matrix * () const {
     gsl_matrix *ret = gsl_matrix_alloc(_GM->size1, _GM->size2);
     gsl_matrix_memcpy(ret, _GM);
     return ret;
@@ -102,7 +102,7 @@ public:
    * Pobranie wartości.
    * Zwraca wartość elementu znajdującego się pod pozycją (r,c).
    */
-  double get(uint r, uint c) {
+  double get(uint r, uint c) const {
     assert(r <= _GM->size1);
     assert(c <= _GM->size2);
     return gsl_matrix_get(_GM, r, c);
@@ -128,13 +128,13 @@ public:
    */
   class iterator {
     gsl_matrix *_GM; /**< Pointer do odpowiedniej macierzy. */
-    uint _ri, _ci;   /**< To, o ile zwiększamy odpowiednie koordynaty. */
-    uint _r,  _c;    /**< Bieżące koordynaty. */
+    int _ri, _ci;    /**< To, o ile zwiększamy odpowiednie koordynaty. */
+    int _r,  _c;     /**< Bieżące koordynaty. */
   public:
     /**
      * Konstruktor. Przekazujemy mu wszystkie wartości początkowe.
      */
-    iterator(gsl_matrix *GM, uint ri, uint ci, uint r, uint c) : _GM(GM), _ri(ri), _ci(ci), _r(r), _c(c) {}
+    iterator(gsl_matrix *GM, int ri, int ci, int r, int c) : _GM(GM), _ri(ri), _ci(ci), _r(r), _c(c) {}
     /**
      * Przesuń iterator do przodu. Ma sens tylko, gdy hasNext()==true.
      */
@@ -146,21 +146,22 @@ public:
      * Stwierdza, czy istnieje element następny.
      * Innymi słowy: czy nie wykroczyliśmy poza macierz.
      */
-    bool hasNext() {
+    bool hasNext() const {
       if((_ri>0) && (_r+_ri >= _GM->size1)) return false; 
       if((_ci>0) && (_c+_ci >= _GM->size2)) return false; 
-      if((_ri<0) && (_r+_ri < 0)) return false;
-      if((_ci<0) && (_c+_ci < 0)) return false;
+      if((_ri<0) && (_r+_ri < 0))           return false;
+      if((_ci<0) && (_c+_ci < 0))           return false;
       return true;
     }
     /**
      * Pobierz wartość znajdującą się pod iteratorem.
      */
-    double get() {
+    double get() const {
       assert(_r <= _GM->size1);
       assert(_c <= _GM->size2);
       return gsl_matrix_get(_GM, _r, _c);
     }
+    double operator*() { return get(); }
     /**
      * Ustaw wartość znajdującą się pod iteratorem.
      */
@@ -193,14 +194,34 @@ public:
   /**
    * Zwraca (iterator na) kolumnę.
    */
-  iterator getCol(uint col) {
+  iterator getCol(uint col) const {
     return iterator(_GM, 1, 0, 0, col);
   }
   /**
    * Zwraca (iterator na) wiersz.
    */
-  iterator getRow(uint row) {
+  iterator getRow(uint row) const {
     return iterator(_GM, 0, 1, row, 0);
+  }
+  /**
+   * Mnożenie macierzy.
+   */
+  GslMatrix mul(const GslMatrix &other) const {
+    assert(_GM->size2 == other._GM->size1);
+    GslMatrix res(_GM->size1, other._GM->size2);
+    for(int r=0; r<_GM->size1; ++r)
+      for(int c=0; c<other._GM->size2; ++c)
+        for(int k=0; k<_GM->size2; ++k)
+          res.set(r, c, res.get(r,c) + get(r,k) * other.get(k, c));
+    return res;
+  }
+  /**
+   * Odwracanie macierzy.
+   */
+  GslMatrix inv() {
+    GslMatrix res(_GM->size2, _GM->size1);
+    gsl_matrix_transpose_memcpy(res._GM, _GM);
+    return res;
   }
 };
 
